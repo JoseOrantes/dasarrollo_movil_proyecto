@@ -1,0 +1,29 @@
+<ion-header [translucent]="translucent">
+  <ion-toolbar>
+    @if (showBack) {
+      <ion-buttons slot="start">
+        <ion-back-button defaultHref="/inicio" text="Regresar" color="primary" />
+      </ion-buttons>
+    }
+
+    <ion-title>{{ title }}</ion-title>
+
+    @if (showProfile) {
+      <ion-buttons slot="end">
+        <ion-button routerLink="/profile">Profile</ion-button>
+      </ion-buttons>
+    }
+
+    <ion-buttons slot="end">
+      <ion-button (click)="takePhoto()" aria-label="Tomar foto">
+        @if (avatar.photo(); as photo) {
+        <ion-avatar>
+            <img [src]="photo" alt="Foto de perfil" />
+        </ion-avatar>
+        } @else {
+            <ion-icon name="person-circle-outline" slot="icon-only"></ion-icon>
+        }
+        </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>

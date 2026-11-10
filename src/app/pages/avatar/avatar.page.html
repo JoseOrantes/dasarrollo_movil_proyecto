@@ -1,0 +1,20 @@
+<ion-content [fullscreen]="true">
+  <ion-header>
+    <ion-toolbar>    
+      <ion-buttons slot="start">
+        <ion-back-button defaultHref="/" color="primary"></ion-back-button>
+      </ion-buttons>
+
+      <ion-title color="primary">Avatar</ion-title>
+
+
+      <ion-buttons slot="end">
+        <ion-avatar (click)="takePhoto()">
+          <img [src]="userImage" *ngIf="!photo" />
+          <img [src]="photo" *ngIf="photo" />
+        </ion-avatar>
+      </ion-buttons>
+
+    </ion-toolbar>
+  </ion-header>
+</ion-content>
