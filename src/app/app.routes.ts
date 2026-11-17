@@ -19,7 +19,7 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/avatar/avatar.page').then((m) => m.AvatarPage),
   },
   {
-    path: 'login',
-    loadComponent: () => import('./pages/login/login.page').then((m) => m.LoginPage),
+    path: 'aboutus',
+    loadComponent: () => import('./pages/aboutus/aboutus.page').then((m) => m.AboutusPage),
   },
 ];

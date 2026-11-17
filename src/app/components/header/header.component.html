@@ -14,6 +14,12 @@
       </ion-buttons>
     }
 
+    @if (showAboutUs) {
+      <ion-buttons slot="end">
+        <ion-button routerLink="/aboutus">About us</ion-button>
+      </ion-buttons>
+    }
+
     <ion-buttons slot="end">
       <ion-button (click)="takePhoto()" aria-label="Tomar foto">
         @if (avatar.photo(); as photo) {

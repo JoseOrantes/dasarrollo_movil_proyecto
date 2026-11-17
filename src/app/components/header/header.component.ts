@@ -28,6 +28,7 @@ export class HeaderComponent implements OnInit {
   @Input() title: string = 'Inicio';
   @Input() showBack = false;
   @Input() showProfile = true; 
+  @Input() showAboutUs = true;
   @Input() translucent = true;
 
   constructor(public avatar: AvatarService) {}

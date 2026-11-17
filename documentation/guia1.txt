@@ -1,0 +1,505 @@
+================================================================================
+GUIA 1 : RECONOCIMIENTO FACIAL EN IONIC + CAPACITOR
+Proyecto: dasarrollo_movil_proyecto
+Region AWS: us-east-2 (Ohio)
+================================================================================
+
+OBJETIVO
+Comparar el rostro en vivo contra la foto de perfil que ya existe en la base de
+datos (usuario con id_user = 1).
+
+NO es un login. Solo es una comparacion facial con RekognitionClient (via las
+Lambdas existentes) y el ovalo de Amplify. El formulario de login de la app
+es independiente y no se toca.
+
+Para la captura se usa el componente FaceLivenessDetector de AWS Amplify tal
+cual viene (óvalo y pantalla por defecto, sin edicion). Las Lambdas y el
+backend ya existen y se reutilizan.
+
+
+================================================================================
+CAMBIOS RESPECTO A LA GUIA ORIGINAL
+================================================================================
+1. Region: todo en us-east-2 (Ohio). 
+2. Lambdas: NO se crean nuevas. Se reutilizan las que ya usa la app Android
+   (us-east-2) y que ya funcionan. Los contratos JSON se toman de la app Android.
+3. Nombres de campos: la guia original usaba selfieBase64/targetBase64/match.
+   Las Lambdas reales usan sourceImageBase64/targetImageBase64/isMatch
+   (ver ApiLiveness.kt) y referenceImageBase64 en la Lambda 2.
+4. Foto de referencia: la guia original tenia una foto fija en Base64 dentro del
+   codigo. Ahora la foto sale de la base de datos:
+   GET {BACKEND}/api/users/1/profile  ->  body.fotoBase64
+5. Sin Camera ni captura propia en Ionic. La captura la hace solo el óvalo de
+   Amplify, como en la app Android.
+6. Campos sin dato se envian como null para no romper la app (ver Parte 3).
+7. Rutas de Windows (C:\apps) eliminadas: el proyecto esta en Linux.
+8. No se crea el proyecto Ionic: ya existe (dasarrollo_movil_proyecto).
+
+
+================================================================================
+PARTE 1: LAMBDAS Y BACKEND (YA EXISTENTES, SOLO VERIFICAR)
+================================================================================
+
+No crear Lambdas nuevas. Las URLs ya estan en la app Android
+(ApiLiveness.kt). Usa las mismas.
+
+LAMBDA 1: obtener sessionId
+  Metodo : GET
+  Respuesta esperada (JSON): { "sessionId": "xxxx-xxxx-xxxx" }
+  Tambien acepta texto plano con el sessionId.
+
+LAMBDA 2: obtener resultados de la prueba de vida
+  Metodo : POST
+  Body   : { "sessionId": "xxxx-xxxx-xxxx" }
+  Respuesta: { "status": "...", "confidence": 99.0,
+               "referenceImageBase64": "..." }
+  Si no hay imagen de referencia, enviar referenceImageBase64: null
+  (no omitir el campo).
+
+LAMBDA 3: comparar rostros
+  Metodo : POST
+  Body   : { "sourceImageBase64": "...", "targetImageBase64": "..." }
+  Respuesta: { "isMatch": true, "similarity": 97.5, "message": "" }
+
+BACKEND (perfil del usuario)
+  Metodo : GET
+  Ruta   : /api/users/1/profile
+  Respuesta: { "standardResponse": {...}, "body": { ..., "fotoBase64": "..." } }
+  Si el usuario no tiene foto: body.fotoBase64 es null.
+  El usuario de referencia es siempre id_user = 1 (admin).
+
+
+================================================================================
+PARTE 2: PREPARAR CAPACITOR Y ANDROID EN EL PROYECTO EXISTENTE
+================================================================================
+
+Ruta del proyecto (Linux):
+  /home/jasmoba/Documents/udv/sem_6/desarrollo_movil/proyecto/dasarrollo_movil_proyecto
+
+PASO 2.1: Instalar dependencias y compilar
+  cd dasarrollo_movil_proyecto
+  npm install
+  npm install @capacitor/core @capacitor/cli @capacitor/android
+  ionic build
+
+PASO 2.2: Agregar la plataforma Android (solo si no existe la carpeta android/)
+  npx cap add android
+  npx cap sync android
+  Nota: ejecuta "npx cap sync android" desde la RAIZ del proyecto
+  (donde esta capacitor.config.ts), no desde dentro de android/.
+  Si sale "android platform has not been added yet" es porque estas en la carpeta equivocada.
+
+PASO 2.3: Configuracion de Amplify (Cognito sin autenticacion)
+  Opcion A (recomendada): copiar los archivos que ya usa la app Android:
+    /home/jasmoba/AndroidStudioProjects/Unidad1/app/src/main/res/raw/amplifyconfiguration.json
+  a:
+    android/app/src/main/res/raw/amplifyconfiguration.json
+
+  La carpeta raw NO viene en la plantilla de Capacitor. Crearla antes:
+    Android Studio: clic derecho en res -> New -> Android Resource Directory
+                    -> Resource type: raw
+    o terminal:     mkdir -p android/app/src/main/res/raw
+  (Ya creada y con el archivo copiado en este proyecto.)
+
+  Opcion B: si no se usa la misma cuenta, crear la configuracion de cero:
+    cd android
+    amplify init
+    amplify add auth
+      - Use default authentication: Manual configuration
+      - User Sign-Up/Sign-In with IAM controls
+      - Allow unauthenticated logins: Yes
+    amplify push
+
+PASO 2.4: Permiso IAM para el rol unauthRole
+  En AWS Console (region us-east-2) -> IAM -> Roles -> el rol que termina en
+  "unauthRole" -> Add permissions -> Create inline policy -> JSON:
+
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": "rekognition:StartFaceLivenessSession",
+        "Resource": "*"
+      }
+    ]
+  }
+
+  Nombre sugerido: StartFaceLiveness.
+
+  Nota: si la app Android ya funciona con el mismo rol, este permiso ya existe.
+  Verificalo antes de crearlo.
+
+  Requisito previo: el rol unauthRole solo existe si hay un Identity Pool.
+  Si no hay ninguno en Cognito (us-east-2), crearlo antes:
+    AWS Console (region us-east-2) -> Cognito -> Identity pools -> Create identity pool
+      - Activar "Enable access to unauthenticated identities" (guest access)
+      - Al terminar, Cognito crea el rol unauthRole automaticamente
+      - Copiar el Identity pool ID (formato us-east-2:xxxxxxxx-xxxx-...)
+
+  Luego, en android/app/src/main/res/raw/amplifyconfiguration.json, agregar el
+  PoolId dentro de CognitoIdentity.Default (el archivo copiado en PASO 2.3 no lo trae):
+    "Default": {
+      "PoolId": "us-east-2:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      "Region": "us-east-2"
+    }
+  Usar el mismo PoolId en la app Android, si ya la usa.
+
+  Por que no hay login: el óvalo usa identidades anonimas (guest access) de Cognito.
+  Cognito entrega credenciales temporales sin usuario ni contrasena. El formulario
+  de login de la app es independiente y no interviene en esta comparacion.
+
+
+================================================================================
+PARTE 3: PUENTE NATIVO CAPACITOR (ANDROID)
+================================================================================
+
+NOTA: el applicationId y el paquete de MainActivity dependen del proyecto.
+Revisa android/app/build.gradle (applicationId) y la carpeta
+android/app/src/main/java/ para usar el paquete real. En los ejemplos se usa
+"io.ionic.starter"; cambialo por el tuyo.
+(En este proyecto ya es io.ionic.starter, verificado en android/app/build.gradle.)
+
+NOTA JDK Y SDK (este proyecto):
+  - Abre en Android Studio la carpeta android/ (no la raiz del proyecto).
+  - Gradle necesita JDK 21. Este proyecto usa un JDK portable, NO el del sistema:
+      android/gradle.properties -> org.gradle.java.home=/home/jasmoba/tools/jdk-21.0.13+9
+    En otra maquina, cambia esa ruta por la de tu JDK 21.
+  - Si Android Studio dice que Gradle JVM 25 es incompatible, elige "Use JVM 21".
+  - El SDK de Android se indica en android/local.properties:
+      sdk.dir=/home/jasmoba/Android/Sdk
+    Cambia la ruta en otra maquina. Si falta este archivo, sale "SDK location not found".
+
+REFERENCIA DE VERSIONES (app Android que ya funciona, Unidad1/gradle/libs.versions.toml):
+  AGP 9.3.1, Kotlin 2.4.20, Amplify UI liveness 1.3.0, aws-auth-cognito 2.14.0,
+  compose-bom 2026.08.00. Este proyecto Ionic tiene AGP 8.13.0 (android/build.gradle):
+  verificar compatibilidad antes de usar esas versiones aqui.
+
+PASO 3.1: android/build.gradle (nivel proyecto)
+  Agregar dentro de buildscript -> dependencies, si no existe ya:
+    classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:2.0.21"
+    classpath "org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.0.21"
+  Nota: con Kotlin 1.9.24 falla la compilacion de @capacitor/camera (usa Kotlin 2.x).
+
+PASO 3.2: android/app/build.gradle (nivel app)
+  apply plugin: 'org.jetbrains.kotlin.android'
+  apply plugin: 'org.jetbrains.kotlin.plugin.compose'
+
+  android {
+      defaultConfig {
+          minSdkVersion 24
+          targetSdkVersion 34
+      }
+      buildFeatures { compose true }
+      compileOptions {
+          coreLibraryDesugaringEnabled true
+      }
+      kotlinOptions { jvmTarget = '21' }
+  }
+
+  dependencies {
+      implementation "com.amplifyframework.ui:liveness:1.2.6"
+      implementation "com.amplifyframework:aws-auth-cognito:2.14.11"
+      implementation "androidx.activity:activity-compose:1.9.0"
+      implementation "androidx.compose.material3:material3:1.2.1"
+      coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.0.4"
+  }
+
+  Verificar que las versiones coincidan con la app Android
+  (Unidad1/app/build.gradle.kts) antes de usarlas.
+  Nota de este proyecto: android/variables.gradle define minSdk 24 y target 36,
+  y android/app/capacitor.build.gradle define Java 21. Si ya existen, no los dupliques.
+
+PASO 3.3: android/app/src/main/AndroidManifest.xml
+  (INTERNET ya esta; el tema AppCompat ya funciona porque appcompat ya es dependencia)
+  <uses-permission android:name="android.permission.CAMERA" />
+
+  Dentro de <application>:
+  <activity
+      android:name=".LivenessActivity"
+      android:exported="false"
+      android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+PASO 3.4: LivenessActivity.kt
+  Ruta: android/app/src/main/java/<paquete>/LivenessActivity.kt
+
+  package <paquete>
+
+  import android.Manifest
+  import android.app.Activity
+  import android.content.Intent
+  import android.content.pm.PackageManager
+  import android.os.Bundle
+  import androidx.activity.ComponentActivity
+  import androidx.activity.compose.setContent
+  import androidx.activity.result.contract.ActivityResultContracts
+  import androidx.compose.material3.MaterialTheme
+  import androidx.core.content.ContextCompat
+  import com.amplifyframework.ui.liveness.ui.FaceLivenessDetector
+
+  class LivenessActivity : ComponentActivity() {
+
+      private val cameraLauncher = registerForActivityResult(
+          ActivityResultContracts.RequestPermission()
+      ) { granted ->
+          if (granted) mostrarDetector() else cerrarConError("Permiso de camara denegado")
+      }
+
+      override fun onCreate(savedInstanceState: Bundle?) {
+          super.onCreate(savedInstanceState)
+          if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+              == PackageManager.PERMISSION_GRANTED) {
+              mostrarDetector()
+          } else {
+              cameraLauncher.launch(Manifest.permission.CAMERA)
+          }
+      }
+
+      private fun mostrarDetector() {
+          val sessionId = intent.getStringExtra("sessionId")
+              ?: return cerrarConError("Sin sessionId")
+          val region = intent.getStringExtra("region") ?: "us-east-2"
+
+          setContent {
+              MaterialTheme {
+                  FaceLivenessDetector(
+                      sessionId = sessionId,
+                      region = region,
+                      onComplete = {
+                          setResult(Activity.RESULT_OK, Intent().putExtra("completed", true))
+                          finish()
+                      },
+                      onError = { error ->
+                          cerrarConError(error.message ?: "Fallo prueba de vida")
+                      }
+                  )
+              }
+          }
+      }
+
+      private fun cerrarConError(mensaje: String) {
+          setResult(Activity.RESULT_CANCELED, Intent().putExtra("error", mensaje))
+          finish()
+      }
+  }
+
+  Nota: la app Android usa FaceLivenessScreen.kt con el mismo componente.
+  Si la firma de FaceLivenessDetector cambio en la version 1.2.6, copia
+  exactamente la llamada de FaceLivenessScreen.kt.
+
+PASO 3.5: FaceLivenessPlugin.kt
+  Ruta: android/app/src/main/java/<paquete>/FaceLivenessPlugin.kt
+
+  package <paquete>
+
+  import android.app.Activity
+  import android.content.Intent
+  import android.util.Log
+  import androidx.activity.result.ActivityResult
+  import com.amplifyframework.auth.cognito.AWSCognitoAuthPlugin
+  import com.amplifyframework.core.Amplify
+  import com.getcapacitor.JSObject
+  import com.getcapacitor.Plugin
+  import com.getcapacitor.PluginCall
+  import com.getcapacitor.PluginMethod
+  import com.getcapacitor.annotation.ActivityCallback
+  import com.getcapacitor.annotation.CapacitorPlugin
+
+  @CapacitorPlugin(name = "FaceLiveness")
+  class FaceLivenessPlugin : Plugin() {
+
+      companion object {
+          private var amplifyListo = false
+      }
+
+      override fun load() {
+          super.load()
+          if (!amplifyListo) {
+              try {
+                  Amplify.addPlugin(AWSCognitoAuthPlugin())
+                  Amplify.configure(context.applicationContext)
+                  amplifyListo = true
+              } catch (e: Exception) {
+                  Log.e("FaceLiveness", "Error configurando Amplify", e)
+              }
+          }
+      }
+
+      @PluginMethod
+      fun startLiveness(call: PluginCall) {
+          val sessionId = call.getString("sessionId") ?: return call.reject("Falta sessionId")
+          val region = call.getString("region", "us-east-2")
+
+          val intent = Intent(context, LivenessActivity::class.java).apply {
+              putExtra("sessionId", sessionId)
+              putExtra("region", region)
+          }
+          startActivityForResult(call, intent, "onResultadoLiveness")
+      }
+
+      @ActivityCallback
+      private fun onResultadoLiveness(call: PluginCall?, result: ActivityResult) {
+          if (call == null) return
+          if (result.resultCode == Activity.RESULT_OK) {
+              call.resolve(JSObject().put("completed", true))
+          } else {
+              val errorMsg = result.data?.getStringExtra("error") ?: "Cancelado"
+              call.reject(errorMsg)
+          }
+      }
+  }
+
+PASO 3.6: Registrar el plugin en MainActivity
+  Ruta: android/app/src/main/java/io/ionic/starter/MainActivity.java
+  Reemplaza TODO el contenido actual (hoy solo dice:
+  "public class MainActivity extends BridgeActivity {}") por:
+
+  package io.ionic.starter;
+
+  import android.os.Bundle;
+  import com.getcapacitor.BridgeActivity;
+
+  public class MainActivity extends BridgeActivity {
+      @Override
+      public void onCreate(Bundle savedInstanceState) {
+          registerPlugin(FaceLivenessPlugin.class);
+          super.onCreate(savedInstanceState);
+      }
+  }
+
+
+================================================================================
+PARTE 4: FRONTEND EN IONIC / ANGULAR
+================================================================================
+
+PASO 4.1: HttpClient
+  Asegurate de tener provideHttpClient() en los providers de la app
+  (app.config.ts o main.ts en standalone).
+  Nota de este proyecto: src/main.ts usa bootstrapApplication y todavia no tiene
+  provideHttpClient(). Agregar: import { provideHttpClient } from '@angular/common/http';
+  y el provider provideHttpClient() dentro de providers.
+
+PASO 4.2: Plugin en TypeScript
+  Crear src/app/services/face-liveness.ts:
+
+  import { registerPlugin } from '@capacitor/core';
+
+  export interface FaceLivenessPlugin {
+    startLiveness(options: { sessionId: string; region?: string }):
+      Promise<{ completed: boolean }>;
+  }
+
+  export const FaceLiveness = registerPlugin<FaceLivenessPlugin>('FaceLiveness');
+
+PASO 4.3: Servicio de verificacion
+  Crear src/app/services/verificacion-facial.service.ts
+  Reemplaza los PEGA_AQUI_...: las URLs de las Lambdas estan en
+  Unidad1/app/src/main/java/com/example/tarea_082426/data/remote/ApiLiveness.kt.
+  Equivalencia: getSessionId = Lambda 1 (GET), getSessionResults = Lambda 2 (POST),
+  compareFaces = Lambda 3 (POST).
+  Nota de este proyecto: las URLs ya estan puestas en
+  src/app/services/verificacion-facial.service.ts (backend: https://202407391.aplicacionesweb2026.com).
+  La URL del backend debe ser accesible desde el celular (no localhost).
+  Si es http:// y no https://, agrega android:usesCleartextTraffic="true"
+  en <application> de AndroidManifest.xml.
+
+  import { Injectable } from '@angular/core';
+  import { HttpClient } from '@angular/common/http';
+  import { firstValueFrom } from 'rxjs';
+  import { FaceLiveness } from './face-liveness';
+
+  @Injectable({ providedIn: 'root' })
+  export class VerificacionFacialService {
+    private readonly URL_BACKEND = 'PEGA_AQUI_LA_URL_DEL_BACKEND';
+    private readonly URL_GET_SESSION = 'PEGA_AQUI_URL_LAMBDA_1';
+    private readonly URL_GET_RESULTS = 'PEGA_AQUI_URL_LAMBDA_2';
+    private readonly URL_COMPARE = 'PEGA_AQUI_URL_LAMBDA_3';
+    private readonly ID_USUARIO_REFERENCIA = 1;
+
+    constructor(private http: HttpClient) {}
+
+    async verificar(): Promise<{ acceso: boolean; mensaje: string }> {
+      // 1. Session ID (Lambda 1)
+      const sesion = await firstValueFrom(
+        this.http.get<any>(this.URL_GET_SESSION)
+      );
+      const sessionId =
+        typeof sesion === 'string' ? sesion : sesion?.sessionId ?? null;
+      if (!sessionId) {
+        return { acceso: false, mensaje: 'No se obtuvo sessionId' };
+      }
+
+      // 2. Captura con el ovalo de Amplify (sin edicion)
+      try {
+        await FaceLiveness.startLiveness({ sessionId, region: 'us-east-2' });
+      } catch (err: any) {
+        return { acceso: false, mensaje: err?.message ?? 'Verificacion cancelada' };
+      }
+
+      // 3. Foto en vivo (Lambda 2)
+      const resultados = await firstValueFrom(
+        this.http.post<any>(this.URL_GET_RESULTS, { sessionId })
+      );
+      const fotoEnVivo: string | null = resultados?.referenceImageBase64 ?? null;
+      if (!fotoEnVivo) {
+        return { acceso: false, mensaje: 'No se obtuvo foto en vivo' };
+      }
+
+      // 4. Foto de perfil desde la base de datos (id_user = 1)
+      const perfil = await firstValueFrom(
+        this.http.get<any>(
+          `${this.URL_BACKEND}/api/users/${this.ID_USUARIO_REFERENCIA}/profile`
+        )
+      );
+      const fotoPerfil: string | null = perfil?.body?.fotoBase64 ?? null;
+      if (!fotoPerfil) {
+        return { acceso: false, mensaje: 'El usuario no tiene foto de perfil' };
+      }
+
+      // 5. Comparacion (Lambda 3)
+      const comparacion = await firstValueFrom(
+        this.http.post<any>(this.URL_COMPARE, {
+          sourceImageBase64: fotoEnVivo,
+          targetImageBase64: fotoPerfil,
+        })
+      );
+
+      return comparacion?.isMatch
+        ? { acceso: true, mensaje: `Coincidencia: ${Number(comparacion.similarity).toFixed(1)}%` }
+        : { acceso: false, mensaje: 'El rostro no coincide con la foto registrada' };
+    }
+  }
+
+  Nota: si fotoBase64 viene con el prefijo "data:image/...;base64,", quitalo
+  antes de enviarlo. Verifica el formato real con el GET del backend.
+
+PASO 4.4: Uso en una pagina
+  Llama a verificar() desde un boton y muestra el mensaje en la vista.
+  Nota de este proyecto: el boton "Verificar con rostro" esta en la pagina de login
+  (src/app/pages/inicio/inicio.page.html). Usa verificando y mensajeFacial en inicio.page.ts.
+  No hay login: solo se compara la foto en vivo con la foto de perfil (id_user = 1).
+  No uses Camera ni AvatarService: la captura es solo el ovalo de Amplify.
+
+
+================================================================================
+PARTE 5: PRUEBAS Y COMPILACION
+================================================================================
+
+  ionic build
+  npx cap sync android
+  cd android
+  ./gradlew clean
+  ./gradlew assembleDebug
+
+APK: android/app/build/outputs/apk/debug/app-debug.apk
+
+Checklist antes de probar:
+  [ ] Lambdas 1, 2 y 3 responden desde us-east-2
+  [ ] GET {BACKEND}/api/users/1/profile devuelve body.fotoBase64
+  [ ] Carpeta android/app/src/main/res/raw/ creada y amplifyconfiguration.json dentro
+  [ ] Identity Pool creado (us-east-2) y PoolId en amplifyconfiguration.json
+  [ ] Rol unauthRole tiene rekognition:StartFaceLivenessSession
+  [ ] Permiso CAMERA y LivenessActivity en AndroidManifest.xml
+  [ ] registerPlugin(FaceLivenessPlugin.class) en MainActivity
+  [ ] provideHttpClient() en main.ts
+  [ ] Las URLs de Lambda y backend estan en verificacion-facial.service.ts

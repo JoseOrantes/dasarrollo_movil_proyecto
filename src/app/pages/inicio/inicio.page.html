@@ -1,17 +1,53 @@
 <ion-content [fullscreen]="true">
-    <app-header >
+    <app-header [title]="nombre || 'Input Forms'">
       <ion-button routerLink="/profile">Profile</ion-button>
     </app-header>
 
     <ion-card>
       <img alt="Silhouette of mountains" src="assets/icon/b.png" />
       <ion-card-header>
-        <ion-card-title>Card Title</ion-card-title>
-        <ion-card-subtitle>Card Subtitle</ion-card-subtitle>
+        <ion-card-title>Titulo (no quemado)</ion-card-title>
+        <ion-card-subtitle>Subtitulo (no quemado)</ion-card-subtitle>
       </ion-card-header>
 
       <ion-card-content>
-        Here's a small text description for the card content. Nothing more, nothing less.
+        Aca va info de las lambdas (no quemarla en el html)
+
+        <form #formulario="ngForm" (ngSubmit)="onSubmit(formulario)">
+          <ion-list-header>
+            <ion-label>Formulario válido: {{ formulario.valid }}</ion-label>
+          </ion-list-header>
+
+          <ion-item>
+            <ion-label>Email:</ion-label>
+            <ion-input type="email"
+                       placeholder="Email"
+                       name="email"
+                       [(ngModel)]="usuario.email"
+                       pattern="^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"
+                       required></ion-input>
+          </ion-item>
+
+          <ion-item>
+            <ion-label>Password:</ion-label>
+            <ion-input type="password"
+                       name="password"
+                       [(ngModel)]="usuario.password"
+                       required
+                       placeholder="Contraseña"></ion-input>
+          </ion-item>
+
+          <ion-button [disabled]="formulario.invalid" type="submit" expand="block">
+            Login
+          </ion-button>
+        </form>
+
+        <ion-button expand="block" color="secondary" [disabled]="verificando()" (click)="verificarRostro()">
+          {{ verificando() ? 'Verificando...' : 'Verificar con rostro' }}
+        </ion-button>
+
+        <ion-label *ngIf="mensajeFacial()">{{ mensajeFacial() }}</ion-label>
       </ion-card-content>
     </ion-card>
+
 </ion-content>
