@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reconocimiento facial híbrido con Ionic, Capacitor y AWS</title>
+  <style>
+    @page { size: A4; margin: 2cm; }
+    body {
+      color: #202124;
+      font: 10.5pt/1.48 Arial, sans-serif;
+      max-width: 900px;
+      margin: 0 auto 0 270px;
+      padding: 0 24px;
+    }
+    .navigation {
+      box-sizing: border-box;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 250px;
+      overflow-y: auto;
+      padding: 20px 14px;
+      background: #123b5d;
+      color: #fff;
+    }
+    .navigation strong { display: block; margin: 0 8px 12px; font-size: 13pt; }
+    .navigation ul { list-style: none; margin: 0; padding: 0; }
+    .navigation li { margin: 2px 0; }
+    .navigation a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      padding: 5px 8px;
+      border-radius: 4px;
+    }
+    .navigation a:hover, .navigation a:focus-visible { background: #285d80; text-decoration: underline; }
+    .navigation .subsection a { padding-left: 20px; font-size: 9.5pt; color: #dceaf3; }
+    @media (max-width: 800px) {
+      body { margin: 0 auto; padding: 0 16px; }
+      .navigation { position: static; width: auto; margin: 0 -16px 24px; max-height: 45vh; }
+    }
+    @media print {
+      body { margin: 0 auto; padding: 0; }
+      .navigation { display: none; }
+    }
+    h1, h2, h3 { color: #123b5d; line-height: 1.2; }
+    h1 { font-size: 25pt; }
+    h2 { margin-top: 1.5em; border-bottom: 1px solid #b8c8d6; padding-bottom: .2em; }
+    h3 { margin-top: 1.2em; }
+    p, li { text-align: left; }
+    code { font: 9pt "DejaVu Sans Mono", monospace; }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #f2f5f7;
+      border: 1px solid #d5dde3;
+      border-radius: 4px;
+      padding: 10px;
+      font: 8pt/1.35 "DejaVu Sans Mono", monospace;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+    th, td { border: 1px solid #b8c8d6; padding: 7px; vertical-align: top; }
+    th { background: #e8f0f5; text-align: left; }
+    .cover {
+      min-height: 24cm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      text-align: center;
+      page-break-after: always;
+    }
+    .cover p { text-align: center; }
+    .cover .middle { margin-top: 4cm; }
+    .muted { color: #555; }
+    .callout {
+      border-left: 4px solid #d58b00;
+      background: #fff7e6;
+      padding: 8px 12px;
+    }
+    .page-break { page-break-before: always; }
+    a { color: #145a86; }
+  </style>
+</head>
+<body>
+  <nav class="navigation" aria-label="Navegación de la guía">
+    <strong>Contenido</strong>
+    <ul>
+      <li><a href="#portada">Portada</a></li>
+      <li><a href="#objetivo">1. Objetivo y conceptos</a></li>
+      <li><a href="#arquitectura">2. Arquitectura y flujo</a></li>
+      <li class="subsection"><a href="#mapa-archivos">Mapa de archivos</a></li>
+      <li class="subsection"><a href="#preparacion">Preparación de la app</a></li>
+      <li class="subsection"><a href="#inicio-android">Arranque de Android</a></li>
+      <li class="subsection"><a href="#inicio-angular">Arranque de Angular</a></li>
+      <li class="subsection"><a href="#recorrido-completo">Recorrido completo</a></li>
+      <li><a href="#aws">3. Servicios AWS</a></li>
+      <li class="subsection"><a href="#pruebas-lambdas">Pruebas de Lambdas</a></li>
+      <li><a href="#urls">4. URLs y contratos</a></li>
+      <li><a href="#capacitor">5. Ionic y Capacitor</a></li>
+      <li><a href="#plugin">6. Plugin Face Liveness</a></li>
+      <li class="subsection"><a href="#regreso-kotlin">De Kotlin a TypeScript</a></li>
+      <li class="subsection"><a href="#puente-typescript">De TypeScript a Kotlin</a></li>
+      <li><a href="#angular-servicio">7. Interfaz y servicio</a></li>
+      <li class="subsection"><a href="#verificar">Paso a paso de verificar()</a></li>
+      <li><a href="#prueba-android">8. Prueba en Android</a></li>
+      <li><a href="#apk">9. Generación del APK</a></li>
+      <li><a href="#entrega">10. Repositorio y entrega</a></li>
+      <li><a href="#lista-final">11. Lista de comprobación</a></li>
+    </ul>
+  </nav>
+
+  <section class="cover" id="portada">
+    <div>
+      <h2>Universidad Da Vinci de Guatemala</h2>
+      <p>[FACULTAD O ESCUELA]</p>
+    </div>
+    <div class="middle">
+      <h1>Implementación de reconocimiento facial<br>en una aplicación móvil híbrida</h1>
+      <p><strong>Ionic + Angular + Capacitor + AWS Amplify</strong></p>
+      <p>Proyecto: <code>dasarrollo_movil_proyecto</code></p>
+    </div>
+    <div>
+      <p><strong>Asignatura:</strong> Desarrollo Móvil</p>
+      <p><strong>Docente:</strong> Ingeniero Rigoberto González</p>
+      <p><strong>Estudiante:</strong> José Armando Orantes Bolaños</p>
+      <p><strong>Carné:</strong> 202407391</p>
+      <p><strong>Fecha:</strong> [Fecha de entrega]</p>
+      <p>[Ciudad, país]</p>
+    </div>
+  </section>
+
+  <h1 style="page-break-before: always">Guía del proyecto</h1>
+  <p>
+    Esta guía explica, paso a paso y desde cero, cómo se estructura el flujo de
+    prueba de vida y comparación facial de este proyecto. La aplicación usa
+    Ionic/Angular para la interfaz, Capacitor para integrarse con Android y un
+    plugin nativo propio para abrir AWS Amplify Face Liveness.
+  </p>
+  <p class="callout">
+    <strong>Alcance y estado:</strong> el repositorio contiene el código del
+    cliente y las URLs de los servicios usados. Esta guía describe cómo
+    comprobar la configuración de AWS; no afirma que se hayan creado o
+    modificado recursos en una cuenta AWS. Antes de entregar, complete los datos
+    de la carátula, verifique las Lambdas y pruebe el flujo con una cuenta y un
+    dispositivo autorizados.
+  </p>
+
+  <h2 id="objetivo">1. Objetivo y conceptos básicos</h2>
+  <p>
+    El objetivo es obtener una sesión de prueba de vida, mostrar al usuario el
+    detector facial de Amplify, recuperar la imagen de referencia que produce
+    la prueba y compararla con la foto del perfil del usuario de referencia
+    <code>id_user = 1</code>. La comparación la realizan servicios backend
+    existentes.
+  </p>
+  <ul>
+    <li><strong>Aplicación híbrida:</strong> interfaz web Angular/Ionic ejecutada dentro de un contenedor Android.</li>
+    <li><strong>Capacitor:</strong> puente entre TypeScript y las funciones nativas de Android.</li>
+    <li><strong>Plugin:</strong> adaptador que expone la operación nativa Face Liveness a TypeScript.</li>
+    <li><strong>Prueba de vida:</strong> comprueba que la cámara está viendo a una persona en vivo; no compara por sí sola con la foto del perfil.</li>
+    <li><strong>Comparación facial:</strong> una Lambda recibe las dos imágenes y responde si coinciden y con qué similitud.</li>
+  </ul>
+  <p>
+    Esta pantalla no convierte la prueba facial en el login del formulario.
+    El formulario tradicional y el botón de verificación facial son flujos
+    separados.
+  </p>
+  <h3>¿Por qué esta aplicación es híbrida?</h3>
+  <p>
+    La interfaz y parte de la lógica se escriben con tecnologías web: HTML,
+    estilos y TypeScript con Angular e Ionic. En Android, esa interfaz se muestra
+    en un componente llamado <strong>WebView</strong> dentro de una aplicación
+    nativa. Capacitor conecta ambos mundos mediante un puente: permite que el
+    código web invoque funciones implementadas en Android y reciba sus
+    resultados. Por eso se considera híbrida: combina una interfaz web con un
+    contenedor y capacidades nativas.
+  </p>
+  <p>
+    En este proyecto, el plugin propio <strong>FaceLiveness</strong> es una
+    pieza de ese puente. TypeScript llama al plugin y este abre la pantalla
+    nativa de Amplify. Capacitor integra la aplicación con Android; el plugin
+    aporta una función específica, no genera el APK por sí mismo.
+  </p>
+
+  <h2 id="arquitectura">2. Arquitectura y flujo completo</h2>
+  <ol>
+    <li>El usuario toca <strong>Verificar con rostro</strong> en la página Inicio.</li>
+    <li>Angular llama a la Lambda 1 con GET y recibe un <code>sessionId</code>.</li>
+    <li>El servicio TypeScript invoca <code>FaceLiveness.startLiveness</code>.</li>
+    <li>Capacitor entrega esa llamada al plugin Kotlin registrado en Android.</li>
+    <li>El plugin abre <code>LivenessActivity</code>; Android solicita permiso de cámara si hace falta y Amplify presenta el detector.</li>
+    <li>Al terminar la prueba, Android devuelve éxito, cancelación o error al plugin y este responde a TypeScript.</li>
+    <li>Si la prueba terminó correctamente, Angular envía el <code>sessionId</code> a la Lambda 2 y obtiene <code>referenceImageBase64</code>.</li>
+    <li>Angular consulta el perfil <code>/api/users/1/profile</code> y obtiene <code>fotoBase64</code>.</li>
+    <li>Angular envía las dos imágenes a la Lambda 3.</li>
+    <li>La respuesta <code>isMatch</code> y <code>similarity</code> se convierte en un mensaje visible en la página.</li>
+  </ol>
+  <pre>InicioPage (Ionic)
+  -> VerificacionFacialService.verificar()
+  -> Lambda 1: crear/obtener sessionId
+  -> FaceLiveness (TypeScript)
+  -> Capacitor Bridge
+  -> FaceLivenessPlugin.kt
+  -> LivenessActivity + Amplify Face Liveness
+  <- resultado de la actividad nativa
+  -> Lambda 2: obtener referenceImageBase64
+  -> API de perfil: obtener fotoBase64
+  -> Lambda 3: comparar las dos imágenes
+  <- isMatch / similarity
+  -> mensaje en la página</pre>
+
+  <h3 id="mapa-archivos">2.1 Mapa de archivos: quién hace qué</h3>
+  <p>
+    Para seguir el flujo hay que distinguir el código web de la aplicación,
+    que termina ejecutándose en el WebView, del código nativo que ejecuta
+    Android. Los siguientes archivos ya existen en el proyecto:
+  </p>
+  <table>
+    <thead><tr><th>Archivo</th><th>Responsabilidad en el flujo</th></tr></thead>
+    <tbody>
+      <tr><td><code>angular.json</code></td><td>Configura cómo Angular genera los archivos web y los coloca en <code>www/</code>.</td></tr>
+      <tr><td><code>capacitor.config.ts</code></td><td>Le indica a Capacitor que los archivos web generados están en <code>www/</code>.</td></tr>
+      <tr><td><code>android/app/src/main/AndroidManifest.xml</code></td><td>Declara la actividad que abre Android al tocar el ícono, la actividad de Face Liveness y los permisos.</td></tr>
+      <tr><td><code>android/app/src/main/java/io/ionic/starter/MainActivity.java</code></td><td>Es la actividad inicial de Android; registra el plugin y usa <code>BridgeActivity</code> de Capacitor.</td></tr>
+      <tr><td><code>src/index.html</code></td><td>Es la página base que carga el WebView; contiene el elemento <code>app-root</code>.</td></tr>
+      <tr><td><code>src/main.ts</code></td><td>Arranca Angular, configura Ionic, el enrutador y las peticiones HTTP.</td></tr>
+      <tr><td><code>src/app/app.component.ts</code> y <code>app.component.html</code></td><td>Definen el componente raíz y el espacio donde Ionic muestra cada página.</td></tr>
+      <tr><td><code>src/app/app.routes.ts</code></td><td>Redirige la ruta inicial a <code>inicio</code> y carga <code>InicioPage</code>.</td></tr>
+      <tr><td><code>src/app/pages/inicio/inicio.page.html</code></td><td>Muestra el botón de verificación y el mensaje resultante.</td></tr>
+      <tr><td><code>src/app/pages/inicio/inicio.page.ts</code></td><td>Responde al botón, llama al servicio y actualiza la pantalla.</td></tr>
+      <tr><td><code>src/app/services/verificacion-facial.service.ts</code></td><td>Orquesta la sesión, la llamada al plugin, las consultas HTTP y la comparación.</td></tr>
+      <tr><td><code>src/app/services/face-liveness.ts</code></td><td>Define la interfaz TypeScript y obtiene el acceso al plugin de Capacitor.</td></tr>
+      <tr><td><code>android/app/src/main/java/io/ionic/starter/FaceLivenessPlugin.kt</code></td><td>Recibe la llamada del puente, abre la actividad nativa y devuelve su resultado.</td></tr>
+      <tr><td><code>android/app/src/main/java/io/ionic/starter/LivenessActivity.kt</code></td><td>Solicita cámara, muestra el detector de Amplify y entrega éxito o error a la actividad anterior.</td></tr>
+      <tr><td><code>android/app/src/main/res/raw/amplifyconfiguration.json</code></td><td>Contiene la configuración que utiliza Amplify en Android.</td></tr>
+      <tr><td><code>android/app/build.gradle</code></td><td>Declara las dependencias nativas de Capacitor, Amplify y Compose.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 id="preparacion">2.2 Antes de abrir la aplicación: preparación de los dos mundos</h3>
+  <ol>
+    <li><code>angular.json</code> indica que el resultado de la compilación web se genera en <code>www/</code>. Esos archivos contienen la aplicación que se ejecutará dentro del WebView.</li>
+    <li><code>capacitor.config.ts</code> declara <code>webDir: 'www'</code>. Al ejecutar <code>npx cap sync android</code>, Capacitor utiliza esa salida para sincronizar la parte web con el proyecto Android.</li>
+    <li><code>android/app/build.gradle</code> incluye las librerías nativas de Capacitor y Amplify. Gradle genera el APK a partir del proyecto Android y sus recursos.</li>
+  </ol>
+  <p>
+    Este es el momento de <strong>empaquetado</strong>, no una llamada del
+    botón facial. La naturaleza híbrida aparece al ejecutar la aplicación:
+    Android abre un contenedor nativo que muestra una interfaz web; después,
+    cuando se necesita la función facial, ambos lados se comunican mediante
+    el puente de Capacitor.
+  </p>
+
+  <h3 id="inicio-android">2.3 Al tocar el ícono: Android arranca primero</h3>
+  <p>
+    En una instalación Android normal, el sistema operativo consulta
+    <code>android/app/src/main/AndroidManifest.xml</code>. El filtro
+    <code>MAIN</code> y <code>LAUNCHER</code> identifica
+    <code>MainActivity</code> como punto de entrada. Este fragmento es del
+    manifiesto:
+  </p>
+  <pre>&lt;activity
+    android:name=".MainActivity"
+    android:exported="true"&gt;
+    &lt;intent-filter&gt;
+        &lt;action android:name="android.intent.action.MAIN" /&gt;
+        &lt;category android:name="android.intent.category.LAUNCHER" /&gt;
+    &lt;/intent-filter&gt;
+&lt;/activity&gt;</pre>
+  <p>
+    Se muestran solo los atributos relevantes del manifiesto. Android crea
+    esa actividad y ejecuta <code>onCreate</code> de
+    <code>android/app/src/main/java/io/ionic/starter/MainActivity.java</code>:
+  </p>
+  <pre>public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(FaceLivenessPlugin.class);
+        super.onCreate(savedInstanceState);
+    }
+}</pre>
+  <ol>
+    <li><code>registerPlugin(FaceLivenessPlugin.class)</code> registra la clase nativa con Capacitor antes de iniciar la actividad base.</li>
+    <li><code>super.onCreate(...)</code> continúa el arranque de <code>BridgeActivity</code>, que proporciona el entorno de Capacitor y el WebView para la interfaz web.</li>
+    <li>El WebView carga los archivos web sincronizados; por eso la pantalla Ionic se ejecuta dentro de la aplicación Android, no como una pantalla nativa escrita íntegramente en Kotlin.</li>
+  </ol>
+  <p>
+    El registro prepara el plugin para que pueda ser invocado; no significa que
+    ya se haya presionado el botón ni que la prueba facial se haya realizado.
+    El plugin también configura Amplify en su método <code>load()</code> cuando
+    Capacitor lo carga. Una excepción al configurar se registra en el log.
+  </p>
+
+  <h3 id="inicio-angular">2.4 Después: arranca Angular dentro del WebView</h3>
+  <ol>
+    <li>La página base <code>src/index.html</code> contiene <code>&lt;app-root&gt;&lt;/app-root&gt;</code>, el lugar donde Angular inserta su componente raíz. Al compilar, Angular genera los archivos que el WebView cargará.</li>
+    <li>El punto de entrada web <code>src/main.ts</code> ejecuta <code>bootstrapApplication(AppComponent, ...)</code>. Entre sus proveedores configura Ionic, <code>provideHttpClient()</code> y el enrutador con <code>routes</code>.</li>
+    <li><code>src/app/app.component.ts</code> asocia el selector <code>app-root</code> con <code>app.component.html</code>. Este último contiene <code>&lt;ion-app&gt;</code> y <code>&lt;ion-router-outlet&gt;</code>, el espacio donde se muestra la página elegida.</li>
+    <li><code>src/app/app.routes.ts</code> redirige la ruta vacía a <code>inicio</code>. La ruta <code>inicio</code> carga <code>InicioPage</code> desde <code>inicio.page.ts</code>.</li>
+    <li>Angular usa <code>inicio.page.html</code> como plantilla de esa página y muestra el botón <strong>Verificar con rostro</strong>. El servicio facial todavía no ha empezado a verificar: espera a que el usuario pulse el botón.</li>
+  </ol>
+  <p>Fragmentos de <code>src/main.ts</code> y <code>src/app/app.routes.ts</code>:</p>
+  <pre>// src/main.ts: fragmento de los proveedores
+bootstrapApplication(AppComponent, {
+  providers: [
+    { provide: RouteReuseStrategy, useClass: IonicRouteStrategy },
+    provideIonicAngular(),
+    provideHttpClient(),
+    provideRouter(routes, withPreloading(PreloadAllModules), withComponentInputBinding()),
+  ],
+});
+
+// src/app/app.routes.ts: fragmento de las rutas
+{
+  path: '',
+  redirectTo: 'inicio',
+  pathMatch: 'full',
+},
+{
+  path: 'inicio',
+  loadComponent: () => import('./pages/inicio/inicio.page').then((m) => m.InicioPage),
+},</pre>
+  <p>
+    Si se abre la versión web directamente en un navegador, no se inicia
+    <code>MainActivity</code>. La implementación del plugin mostrada aquí es
+    nativa de Android; el recorrido completo requiere ejecutar la app en
+    Android.
+  </p>
+
+  <h3 id="recorrido-completo">2.5 El recorrido completo, con archivos y dirección de los datos</h3>
+  <pre>ANDROID INICIA LA APP
+  AndroidManifest.xml -> MainActivity.java
+  -> BridgeActivity de Capacitor -> WebView
+
+ANGULAR INICIA LA INTERFAZ DENTRO DEL WEBVIEW
+  index.html -> main.ts -> AppComponent / ion-router-outlet
+  -> app.routes.ts -> inicio.page.ts + inicio.page.html
+
+EL USUARIO PRESIONA EL BOTÓN
+  inicio.page.html -> InicioPage.verificarRostro()
+  -> VerificacionFacialService.verificar()
+  -> HTTP GET a Lambda 1 -> sessionId
+
+CRUCE DE WEB A ANDROID
+  servicio TypeScript -> face-liveness.ts -> puente Capacitor
+  -> FaceLivenessPlugin.kt -> Intent -> LivenessActivity.kt
+  -> FaceLivenessDetector de Amplify
+
+REGRESO DE ANDROID A WEB
+  LivenessActivity: setResult(...) + finish()
+  -> FaceLivenessPlugin.onResultadoLiveness(...)
+  -> call.resolve(...) o call.reject(...)
+  -> puente Capacitor -> promesa en TypeScript
+
+CONTINUACIÓN EN WEB
+  servicio -> HTTP POST Lambda 2 -> imagen en vivo
+  -> HTTP GET perfil -> foto registrada
+  -> HTTP POST Lambda 3 -> resultado de comparación
+  -> inicio.page.ts actualiza mensajeFacial
+  -> inicio.page.html muestra el resultado</pre>
+  <p>
+    El plugin no envía la foto a Angular en su resultado: devuelve que la
+    actividad terminó o informa un error. La imagen se obtiene después, desde
+    la Lambda 2. Tampoco es el plugin quien compara rostros: la comparación se
+    solicita por HTTP a la Lambda 3 desde el servicio TypeScript.
+  </p>
+
+  <h2 id="aws">3. Servicios AWS utilizados</h2>
+  <p>
+    El código referencia tres Lambda Function URLs existentes. Se reutilizan;
+    no se crean Lambdas nuevas como parte del código Ionic.
+  </p>
+  <table>
+    <thead><tr><th>Servicio</th><th>Método y entrada</th><th>Respuesta esperada</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Lambda 1: obtener sesión</td>
+        <td><code>GET</code>, sin body</td>
+        <td><code>{"sessionId":"..."}</code>; el servicio también contempla una cadena JSON como valor</td>
+      </tr>
+      <tr>
+        <td>Lambda 2: resultado de Face Liveness</td>
+        <td><code>POST {"sessionId":"..."}</code></td>
+        <td><code>status</code>, <code>confidence</code> y <code>referenceImageBase64</code></td>
+      </tr>
+      <tr>
+        <td>Lambda 3: comparación</td>
+        <td><code>POST {"sourceImageBase64":"...","targetImageBase64":"..."}</code></td>
+        <td><code>isMatch</code>, <code>similarity</code> y <code>message</code></td>
+      </tr>
+      <tr>
+        <td>API del perfil</td>
+        <td><code>GET /api/users/1/profile</code></td>
+        <td><code>body.fotoBase64</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>3.1 Verificar recursos y permisos en AWS</h3>
+  <ol>
+    <li>Inicie sesión en AWS Console.</li>
+    <li>Abra Lambda y localice las funciones correspondientes a los tres endpoints. Confirme que las URLs de Function URL coincidan exactamente con las de la sección 4.</li>
+    <li>Revise el tipo de autenticación y CORS de cada Function URL según la forma en que el proyecto las consume. No publique credenciales ni claves en el código o en el documento.</li>
+    <li>En Cognito, confirme que existe un Identity Pool con acceso para identidades no autenticadas, si esa es la configuración usada por Amplify.</li>
+    <li>Revise el rol de identidad no autenticada asociado al pool. La prueba necesita autorización para iniciar Face Liveness. El permiso documentado es <code>rekognition:StartFaceLivenessSession</code>; aplique los permisos requeridos por el entorno y las políticas de la universidad.</li>
+    <li>Confirme que <code>android/app/src/main/res/raw/amplifyconfiguration.json</code> existe y corresponde a ese Identity Pool. No pegue en un documento público valores sensibles de configuración.</li>
+  </ol>
+
+  <h3 id="pruebas-lambdas">3.2 Probar las tres Lambdas</h3>
+  <p>
+    Los siguientes comandos son ejemplos para ejecutar desde una terminal con
+    acceso a Internet. Reemplace los valores entre corchetes por valores reales.
+    No se ejecutan automáticamente al abrir la guía.
+  </p>
+  <p><strong>Lambda 1 — solicitar un sessionId:</strong></p>
+  <pre>curl -i -X GET \
+  'https://z7x5f3gxwk5fo54d57h5dj3vu40dmnmz.lambda-url.us-east-2.on.aws/' \
+  -H 'Accept: application/json'</pre>
+  <p>
+    Guarde el <code>sessionId</code> de la respuesta. Debe usarse para completar
+    una prueba de vida antes de solicitar los resultados a la Lambda 2.
+  </p>
+  <p><strong>Lambda 2 — obtener resultados después de completar la prueba:</strong></p>
+  <pre>curl -i -X POST \
+  'https://g5fknbtkojh5ev32sitjvslbwa0qxgmy.lambda-url.us-east-2.on.aws/' \
+  -H 'Content-Type: application/json' \
+  -d '{"sessionId":"[SESSION_ID_REAL]"}'</pre>
+  <p>
+    Compruebe que la respuesta tenga <code>referenceImageBase64</code> con una
+    imagen. Una sesión no completada puede no tener imagen todavía.
+  </p>
+  <p><strong>Lambda 3 — comparar imágenes:</strong></p>
+  <pre>curl -i -X POST \
+  'https://fldpbsvh25yo2eftlcfuwi7mgy0csxdv.lambda-url.us-east-2.on.aws/' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "sourceImageBase64":"[BASE64_IMAGEN_DE_LIVENESS]",
+    "targetImageBase64":"[BASE64_FOTO_DE_PERFIL]"
+  }'</pre>
+  <p>
+    Use dos valores Base64 reales y válidos, sin marcadores ni prefijo
+    <code>data:image/...;base64,</code>, salvo que el contrato de la Lambda
+    indique lo contrario. La respuesta debe incluir <code>isMatch</code> y
+    <code>similarity</code>.
+  </p>
+  <p><strong>API de perfil — verificar la imagen de referencia:</strong></p>
+  <pre>curl -i -X GET \
+  'https://202407391.aplicacionesweb2026.com/api/users/1/profile' \
+  -H 'Accept: application/json'</pre>
+  <p>
+    Confirme que la respuesta tenga <code>body.fotoBase64</code>. Si contiene
+    una cadena nula o vacía, la Lambda 3 no tendrá una imagen de perfil que
+    comparar.
+  </p>
+
+  <h2 id="urls">4. URLs y contratos configurados en el código</h2>
+  <p>Las URLs están declaradas en <code>src/app/services/verificacion-facial.service.ts</code>:</p>
+  <pre>Lambda 1 (GET):
+https://z7x5f3gxwk5fo54d57h5dj3vu40dmnmz.lambda-url.us-east-2.on.aws/
+
+Lambda 2 (POST):
+https://g5fknbtkojh5ev32sitjvslbwa0qxgmy.lambda-url.us-east-2.on.aws/
+
+Lambda 3 (POST):
+https://fldpbsvh25yo2eftlcfuwi7mgy0csxdv.lambda-url.us-east-2.on.aws/
+
+Perfil de usuario (GET):
+https://202407391.aplicacionesweb2026.com/api/users/1/profile</pre>
+  <p>
+    Los contratos que usa el cliente son los siguientes. Los cuerpos de
+    respuesta son ejemplos de forma; los valores dependen de cada ejecución.
+  </p>
+  <pre>// Lambda 1: GET
+{"sessionId":"identificador-de-sesion"}
+
+// Lambda 2: POST
+{"sessionId":"identificador-de-sesion"}
+
+// Lambda 2: respuesta
+{"status":"COMPLETED","confidence":99.0,"referenceImageBase64":"..."}
+
+// Lambda 3: POST
+{"sourceImageBase64":"...","targetImageBase64":"..."}
+
+// Lambda 3: respuesta
+{"isMatch":true,"similarity":97.5,"message":""}
+
+// Perfil: parte relevante de la respuesta
+{"body":{"fotoBase64":"..."}}</pre>
+
+  <h2 id="capacitor">5. Proyecto Ionic y configuración de Capacitor</h2>
+  <p>
+    La aplicación usa Angular e Ionic en <code>src/</code>. Capacitor empaqueta
+    la salida web ubicada en <code>www/</code> dentro del proyecto Android
+    existente. La configuración de <code>webDir</code> está en
+    <code>capacitor.config.ts</code>; las dependencias se declaran en
+    <code>package.json</code>.
+  </p>
+  <ol>
+    <li>Instale las dependencias desde la raíz del repositorio con <code>npm ci</code> (o <code>npm install</code> cuando corresponda).</li>
+    <li>Genere la salida web de producción con <code>npm run build</code>. Angular la deja en <code>www/</code>.</li>
+    <li>Sincronice los archivos y plugins con Android desde la raíz: <code>npx cap sync android</code>.</li>
+    <li>Abra el proyecto nativo con <code>npx cap open android</code> o abra la carpeta <code>android/</code> desde Android Studio.</li>
+    <li>La carpeta <code>android/</code> ya existe en este proyecto. Solo se usaría <code>npx cap add android</code> si se estuviera creando la plataforma por primera vez.</li>
+  </ol>
+  <p>
+    Las dependencias relevantes incluyen <code>@capacitor/android</code>,
+    <code>@capacitor/core</code>, <code>@capacitor/cli</code>,
+    <code>@ionic/angular</code>, la UI nativa de Amplify Liveness y Amplify
+    Cognito Auth. No se necesita un plugin para producir el APK: el plugin
+    Face Liveness es para integrar la función nativa.
+  </p>
+
+  <h2 id="plugin">6. Plugin nativo de Face Liveness</h2>
+  <h3>6.1 Android: permiso, pantalla y registro</h3>
+  <p>
+    El manifiesto declara Internet y cámara, y registra <code>LivenessActivity</code>.
+    Android solicita el permiso de cámara en tiempo de ejecución antes de
+    mostrar el detector.
+  </p>
+  <p>En <code>android/app/build.gradle</code> se encuentran estas dependencias:</p>
+  <pre>implementation project(':capacitor-android')
+implementation "com.amplifyframework.ui:liveness:1.2.6"
+implementation "com.amplifyframework:aws-auth-cognito:2.14.11"</pre>
+  <p>
+    La primera incorpora Capacitor para Android; la segunda proporciona el
+    detector facial y la tercera integra la autenticación de Cognito con
+    Amplify. En el plugin, <code>load()</code> inicializa Amplify al cargarlo:
+  </p>
+  <pre>// FaceLivenessPlugin.kt: fragmento de load()
+Amplify.addPlugin(AndroidLoggingPlugin(LogLevel.DEBUG))
+Amplify.addPlugin(AWSCognitoAuthPlugin())
+Amplify.configure(context.applicationContext)
+amplifyListo = true</pre>
+  <p>
+    El código comprueba <code>amplifyListo</code> para evitar repetir la
+    inicialización. Si esta falla, la excepción se registra con
+    <code>Log.e</code>. La configuración utilizada está en
+    <code>android/app/src/main/res/raw/amplifyconfiguration.json</code>.
+  </p>
+  <p>La parte principal de <code>FaceLivenessPlugin.kt</code> declara el plugin y recibe la llamada:</p>
+  <pre>@CapacitorPlugin(name = "FaceLiveness")
+class FaceLivenessPlugin : Plugin() {
+    @PluginMethod
+    fun startLiveness(call: PluginCall) {
+        val sessionId = call.getString("sessionId")
+            ?: return call.reject("Falta sessionId")
+        val region = call.getString("region", "us-east-2")
+        val intent = Intent(context, LivenessActivity::class.java).apply {
+            putExtra("sessionId", sessionId)
+            putExtra("region", region)
+        }
+        startActivityForResult(call, intent, "onResultadoLiveness")
+    }
+}</pre>
+  <p>
+    <code>@CapacitorPlugin</code> asigna el nombre que TypeScript busca.
+    <code>@PluginMethod</code> expone la función. El plugin pasa los parámetros
+    de la sesión a una actividad Android, y luego resuelve o rechaza la llamada
+    original.
+  </p>
+  <p>
+    El <code>Intent</code> es el mensaje de Android que abre otra actividad.
+    <code>putExtra</code> adjunta sus parámetros. Con
+    <code>startActivityForResult</code> el plugin indica que espera el resultado
+    de <code>LivenessActivity</code> en el callback llamado
+    <code>onResultadoLiveness</code>.
+  </p>
+  <p>
+    En <code>LivenessActivity.kt</code>, primero se revisa el permiso real de
+    cámara. Declararlo en el manifiesto no sustituye la autorización del
+    usuario:
+  </p>
+  <pre>private val cameraLauncher = registerForActivityResult(
+    ActivityResultContracts.RequestPermission()
+) { granted ->
+    if (granted) mostrarDetector() else cerrarConError("Permiso de camara denegado")
+}
+
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+        == PackageManager.PERMISSION_GRANTED) {
+        mostrarDetector()
+    } else {
+        cameraLauncher.launch(Manifest.permission.CAMERA)
+    }
+}</pre>
+  <p>
+    Si ya existe el permiso, se llama inmediatamente a
+    <code>mostrarDetector()</code>. De lo contrario, Android presenta la
+    solicitud; el callback continúa solo si el usuario la acepta.
+  </p>
+  <p>En <code>LivenessActivity.kt</code>, el detector recibe la sesión:</p>
+  <pre>FaceLivenessDetector(
+    sessionId = sessionId,
+    region = region,
+    onComplete = {
+        setResult(Activity.RESULT_OK, Intent().putExtra("completed", true))
+        finish()
+    },
+    onError = { error ->
+        cerrarConError(error.message ?: "Fallo prueba de vida")
+    }
+)</pre>
+  <p>
+    <code>onComplete</code> finaliza la actividad con éxito. <code>onError</code>
+    devuelve el problema al plugin. <code>MainActivity.java</code> registra la
+    clase con <code>registerPlugin(FaceLivenessPlugin.class)</code>; si no se
+    registra, JavaScript no puede encontrar el plugin. El fragmento anterior
+    omite el registro detallado del error para concentrarse en el resultado.
+  </p>
+
+  <h3 id="regreso-kotlin">6.2 De Kotlin de regreso a TypeScript</h3>
+  <p>
+    Después de <code>setResult(...)</code> y <code>finish()</code>, Android
+    devuelve el resultado a <code>FaceLivenessPlugin.kt</code>. El método
+    indicado al abrir la actividad recibe el resultado:
+  </p>
+  <pre>@ActivityCallback
+private fun onResultadoLiveness(call: PluginCall?, result: ActivityResult) {
+    if (call == null) return
+    if (result.resultCode == Activity.RESULT_OK) {
+        call.resolve(JSObject().put("completed", true))
+    } else {
+        val errorMsg = result.data?.getStringExtra("error") ?: "Cancelado"
+        call.reject(errorMsg)
+    }
+}</pre>
+  <ol>
+    <li>Con <code>RESULT_OK</code>, el plugin crea <code>{"completed": true}</code> y llama a <code>call.resolve</code>.</li>
+    <li>Con cancelación o error, obtiene el mensaje enviado por la actividad y llama a <code>call.reject</code>.</li>
+    <li>Capacitor transporta esa respuesta al WebView: la promesa que TypeScript esperaba se resuelve o se rechaza.</li>
+    <li>Si la promesa se resuelve, continúa <code>verificar()</code>. Si se rechaza, el <code>catch</code> del servicio devuelve un mensaje y ya no solicita la comparación.</li>
+  </ol>
+  <p>
+    El objeto de éxito indica que la actividad terminó. No es el resultado de
+    coincidencia ni contiene la foto: esos datos se solicitan después por HTTP.
+  </p>
+
+  <h3 id="puente-typescript">6.3 TypeScript: interfaz del plugin y cruce del puente</h3>
+  <p>El archivo <code>src/app/services/face-liveness.ts</code> describe el contrato JavaScript/Android:</p>
+  <pre>import { registerPlugin } from '@capacitor/core';
+
+export interface FaceLivenessPlugin {
+  startLiveness(options: {
+    sessionId: string;
+    region?: string;
+  }): Promise&lt;{ completed: boolean }&gt;;
+}
+
+export const FaceLiveness =
+  registerPlugin&lt;FaceLivenessPlugin&gt;('FaceLiveness');</pre>
+  <p>
+    El nombre <code>FaceLiveness</code> debe coincidir con
+    <code>@CapacitorPlugin(name = "FaceLiveness")</code> en Kotlin. La interfaz
+    describe los parámetros y el resultado para TypeScript; no abre la cámara
+    por sí misma. <code>registerPlugin</code> proporciona el objeto que el
+    servicio usa para solicitar la función nativa.
+  </p>
+  <p>
+    El punto exacto en que la llamada sale del lado web es cuando
+    <code>verificacion-facial.service.ts</code> ejecuta y espera
+    <code>FaceLiveness.startLiveness(...)</code>. Capacitor identifica el plugin
+    <code>FaceLiveness</code> y el método <code>startLiveness</code>, y entrega
+    la petición al método Kotlin registrado. El regreso ocurre en
+    <code>call.resolve</code> o <code>call.reject</code>: Capacitor entrega el
+    resultado a la promesa que el servicio está esperando.
+  </p>
+
+  <h2 id="angular-servicio">7. Interfaz Angular y servicio de verificación</h2>
+  <h3>7.1 Botón y estado de la pantalla</h3>
+  <p>
+    En <code>inicio.page.html</code>, el botón llama a
+    <code>verificarRostro()</code>. La página deshabilita el botón mientras se
+    procesa la operación y muestra el mensaje final.
+  </p>
+  <pre>&lt;ion-button
+  [disabled]="verificando()"
+  (click)="verificarRostro()"&gt;
+  {{ verificando() ? 'Verificando...' : 'Verificar con rostro' }}
+&lt;/ion-button&gt;
+
+&lt;ion-label *ngIf="mensajeFacial()"&gt;
+  {{ mensajeFacial() }}
+&lt;/ion-label&gt;</pre>
+  <p>
+    El <code>(click)</code> de la plantilla ejecuta
+    <code>verificarRostro()</code> en <code>inicio.page.ts</code>. La función
+    activa el estado de espera, llama al servicio, guarda el mensaje y siempre
+    restablece el botón al terminar. Este fragmento omite la línea de log y
+    simplifica la anotación del error:
+  </p>
+  <pre>async verificarRostro() {
+  this.verificando.set(true);
+  this.mensajeFacial.set('');
+  try {
+    const resultado = await this.verificacionFacial.verificar();
+    this.mensajeFacial.set(resultado.mensaje);
+  } catch (err) {
+    this.mensajeFacial.set(`Error: ${err?.message ?? err}`);
+  } finally {
+    this.verificando.set(false);
+  }
+}</pre>
+
+  <h3>7.2 HttpClient y orden de las solicitudes</h3>
+  <p>
+    <code>src/main.ts</code> configura <code>provideHttpClient()</code>, lo que
+    permite inyectar <code>HttpClient</code> en
+    <code>VerificacionFacialService</code>. El método <code>verificar()</code>
+    ejecuta las solicitudes en este orden:
+  </p>
+  <ol>
+    <li><code>GET</code> Lambda 1; extrae <code>sessionId</code>.</li>
+    <li>Abre Face Liveness mediante el plugin nativo.</li>
+    <li><code>POST</code> Lambda 2; obtiene <code>referenceImageBase64</code>.</li>
+    <li><code>GET</code> del perfil; obtiene <code>body.fotoBase64</code>.</li>
+    <li><code>POST</code> Lambda 3; compara imágenes y muestra el resultado.</li>
+  </ol>
+  <h3 id="verificar">7.3 Paso a paso dentro de <code>verificar()</code></h3>
+  <p>
+    Todos los fragmentos de esta sección provienen de
+    <code>src/app/services/verificacion-facial.service.ts</code>; se omiten
+    algunas líneas de log para concentrarse en el flujo. <code>HttpClient</code>
+    devuelve observables y <code>firstValueFrom</code> permite esperar el
+    resultado HTTP con <code>await</code>.
+  </p>
+  <p><strong>Paso 1: solicitar la sesión a Lambda 1.</strong></p>
+  <pre>const sesion = await firstValueFrom(
+  this.http.get&lt;any&gt;(this.URL_GET_SESSION)
+);
+const sessionId =
+  typeof sesion === 'string' ? sesion : sesion?.sessionId ?? null;
+if (!sessionId) {
+  return { acceso: false, mensaje: 'No se obtuvo sessionId' };
+}</pre>
+  <p>
+    El servicio extrae el identificador de la respuesta y se detiene si no lo
+    encuentra. <code>HttpClient</code> interpreta JSON por defecto; la rama que
+    comprueba cadenas no configura por sí sola una respuesta HTTP de texto sin
+    formato.
+  </p>
+  <p><strong>Paso 2: solicitar la prueba nativa mediante el plugin.</strong></p>
+  <p>
+    El servicio invoca <code>FaceLiveness.startLiveness(...)</code> con la
+    sesión y espera la promesa. Mientras el usuario completa la prueba, la
+    función queda esperando. Si el plugin rechaza la llamada, el
+    <code>catch</code> retorna un resultado sin acceso y un mensaje de error.
+    Los detalles de ida y vuelta están en las secciones 6.2 y 6.3.
+  </p>
+  <p><strong>Paso 3: pedir a Lambda 2 la imagen de la prueba.</strong></p>
+  <pre>const resultados = await firstValueFrom(
+  this.http.post&lt;any&gt;(this.URL_GET_RESULTS, { sessionId })
+);
+const fotoEnVivo: string | null = resultados?.referenceImageBase64 ?? null;
+if (!fotoEnVivo) {
+  return { acceso: false, mensaje: 'No se obtuvo foto en vivo' };
+}</pre>
+  <p>
+    La sesión identifica la prueba previamente completada. El servicio toma
+    <code>referenceImageBase64</code> como la imagen a comparar; si falta,
+    termina con un mensaje y no llama a la Lambda de comparación.
+  </p>
+  <p><strong>Paso 4: consultar la foto registrada en el backend.</strong></p>
+  <pre>const perfil = await firstValueFrom(
+  this.http.get&lt;any&gt;(
+    `${this.URL_BACKEND}/api/users/${this.ID_USUARIO_REFERENCIA}/profile`
+  )
+);
+const fotoPerfil: string | null =
+  perfil?.body?.fotoBase64?.replace(/\s/g, '') ?? null;
+if (!fotoPerfil) {
+  return { acceso: false, mensaje: 'El usuario no tiene foto de perfil' };
+}</pre>
+  <p>
+    <code>ID_USUARIO_REFERENCIA</code> vale <code>1</code>. La app recibe la
+    foto desde el backend, no accede directamente a la base de datos. El
+    <code>replace</code> elimina espacios en blanco del valor Base64.
+  </p>
+  <p><strong>Paso 5: enviar las dos imágenes a Lambda 3 y preparar el mensaje.</strong></p>
+  <pre>const comparacion = await firstValueFrom(
+  this.http.post&lt;any&gt;(this.URL_COMPARE, {
+    sourceImageBase64: fotoEnVivo,
+    targetImageBase64: fotoPerfil,
+  })
+);
+
+return comparacion?.isMatch
+  ? { acceso: true, mensaje: `Coincidencia: ${Number(comparacion.similarity).toFixed(1)}%` }
+  : { acceso: false, mensaje: 'El rostro no coincide con la foto registrada' };</pre>
+  <p>
+    Si la Lambda informa coincidencia, se devuelve el porcentaje con un decimal.
+    Si no, el servicio devuelve el mensaje de que los rostros no coinciden. El
+    resultado vuelve a <code>inicio.page.ts</code>, que copia
+    <code>resultado.mensaje</code> en <code>mensajeFacial</code>; la plantilla
+    lo muestra al usuario. Los errores HTTP no capturados dentro del servicio
+    llegan al <code>catch</code> de la página, que también muestra un mensaje.
+  </p>
+  <p>
+    La Lambda 2 usa <code>referenceImageBase64</code> como imagen de la prueba.
+    La Lambda 3 espera los nombres exactos
+    <code>sourceImageBase64</code> y <code>targetImageBase64</code>. La foto del
+    perfil no debe ser nula y debe tener el formato Base64 que espera la Lambda.
+  </p>
+  <h2 id="prueba-android">8. Prueba completa en un dispositivo Android</h2>
+  <ol>
+    <li>Confirme que el teléfono tiene conexión a Internet y una cámara funcional.</li>
+    <li>Instale una compilación actual de la app y permita el acceso a la cámara cuando Android lo solicite.</li>
+    <li>Toque <strong>Verificar con rostro</strong>.</li>
+    <li>Confirme en los logs de la app que Lambda 1 devolvió un sessionId.</li>
+    <li>Complete las instrucciones del óvalo de Amplify y espere a que la actividad nativa termine.</li>
+    <li>Confirme que Lambda 2 devuelva la imagen de la prueba y que la API del perfil devuelva la foto de referencia.</li>
+    <li>Confirme que Lambda 3 devuelva <code>isMatch</code> y <code>similarity</code>; la app debe mostrar coincidencia o falta de coincidencia.</li>
+    <li>Repita con casos de cancelación, permiso de cámara denegado y falta de foto para confirmar que se muestra un error entendible.</li>
+  </ol>
+
+  <h3>Problemas frecuentes</h3>
+  <table>
+    <thead><tr><th>Síntoma</th><th>Qué revisar</th></tr></thead>
+    <tbody>
+      <tr><td>No se obtiene sessionId</td><td>Respuesta de Lambda 1, conectividad, URL y tipo de autenticación de Function URL.</td></tr>
+      <tr><td>Amplify no inicia Face Liveness</td><td>Identity Pool, archivo raw de Amplify, rol de invitado y permiso de Rekognition.</td></tr>
+      <tr><td>La cámara no abre</td><td>Permiso CAMERA en manifiesto y permiso concedido en Android.</td></tr>
+      <tr><td>No hay imagen en resultados</td><td>Completar primero la prueba de vida y revisar estado/respuesta de Lambda 2.</td></tr>
+      <tr><td>Falla la comparación</td><td>Verificar que las dos imágenes existan, estén en Base64 crudo y usen los nombres exactos de campos.</td></tr>
+      <tr><td>Funciona en navegador pero no en teléfono</td><td>Verificar URL pública HTTPS, conectividad del dispositivo, CORS y configuración Android.</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="apk">9. Generación del APK</h2>
+  <p>
+    Capacitor sincroniza la aplicación web con Android; Android Gradle Plugin
+    produce el APK. Desde la raíz del proyecto:
+  </p>
+  <pre>npm run build
+npx cap sync android
+cd android
+./gradlew assembleDebug</pre>
+  <p>
+    El APK de depuración se genera en
+    <code>android/app/build/outputs/apk/debug/app-debug.apk</code>. Para la
+    entrega, use el nombre requerido por el curso, por ejemplo
+    <code>[nombre]_V1.apk</code>. Si se solicita una versión de publicación,
+    genere un APK/AAB firmado desde Android Studio y resguarde la clave de firma;
+    no la agregue al repositorio.
+  </p>
+
+  <h2 id="entrega">10. Repositorio y entrega</h2>
+  <p>
+    Repositorio configurado para este proyecto:
+    <a href="https://github.com/JoseOrantes/dasarrollo_movil_proyecto">https://github.com/JoseOrantes/dasarrollo_movil_proyecto</a>.
+    Incluya esta URL HTTPS en el documento final y verifique que abra el
+    repositorio.
+  </p>
+  <ol>
+    <li>Suba el código fuente del proyecto al repositorio GitHub.</li>
+    <li>En GitHub, abra <strong>Settings → Collaborators</strong> (o el control equivalente) e invite al usuario <code>rarizandieta</code>.</li>
+    <li>Compruebe que la invitación fue enviada y, si el curso lo requiere, que fue aceptada.</li>
+    <li>Adjunte el PDF con carátula y el APK con el nombre solicitado en la plataforma de entrega.</li>
+    <li>Abra ambos archivos después de cargarlos para comprobar que no estén dañados.</li>
+  </ol>
+
+  <h2 id="lista-final">11. Lista de comprobación final</h2>
+  <ul>
+    <li>[ ] Completar los campos de la carátula.</li>
+    <li>[ ] Confirmar en AWS que las tres Lambda Function URLs están activas.</li>
+    <li>[ ] Incluir las tres URLs y probar cada request con datos válidos.</li>
+    <li>[ ] Confirmar Identity Pool, rol invitado, archivo de Amplify y permiso de cámara.</li>
+    <li>[ ] Probar todo el recorrido en un dispositivo Android, incluida la comparación final.</li>
+    <li>[ ] Sincronizar y compilar el APK desde la versión final del código.</li>
+    <li>[ ] Renombrar el APK como <code>[nombre]_V1.apk</code>.</li>
+    <li>[ ] Confirmar que el repositorio abre mediante el enlace HTTPS e invitar a <code>rarizandieta</code>.</li>
+    <li>[ ] Exportar/entregar este documento como PDF y revisar carátula, enlaces y legibilidad.</li>
+  </ul>
+  <p class="muted">
+    Los resultados de prueba deben completarse con evidencia real obtenida en la
+    cuenta AWS y en el dispositivo utilizado para la demostración. No incluya
+    credenciales, claves privadas, tokens ni datos biométricos de otras personas.
+  </p>
+</body>
+</html>
